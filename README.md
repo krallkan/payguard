@@ -24,7 +24,7 @@ full-access key (no protection) or need a human to approve every payment (not au
 
 Needs Node.js 20+ and git. No `.env`, keys, wallet or NEAR are required: demo mode runs the guard contract's rules in an in-memory simulator ([packages/sim/src/sim-guard.ts](packages/sim/src/sim-guard.ts), same checks and panic messages as [contract/src/lib.rs](contract/src/lib.rs), real ed25519 signatures) against fixture accounts.
 
-1. `git clone <repo> && cd <repo>`
+1. `git clone https://github.com/krallkan/payguard.git && cd payguard`
 2. `npm install`
 3. `npm test` → you should see `# pass 34` and `# fail 0`.
 4. `npm run demo:attack` → the terminal ends with `RESULT: refund-desk.taskin-hack.testnet received nothing`; the summary lists two `sent` invoices, one `refused_by_wrapper` and two `refused_by_contract`.
