@@ -57,6 +57,18 @@ Transactions from that run:
 
 Deploying your own copy: [scripts/deploy-testnet.sh](scripts/deploy-testnet.sh) (uses `near-cli-rs` and `cargo-near`).
 
+Risk service (live testnet data: NEAR RPC, NearBlocks API, guard contract views):
+
+```bash
+npm test                                                # scoring rules → "# pass 12"
+npm run check -- refund-desk.taskin-hack.testnet 0.1    # → BLOCK, quotes the blocklist evidence
+npm run check -- shop.taskin-hack.testnet 0.1           # → ALLOW, "paid 1 time(s) before"
+npm run risk                                            # HTTP on :3001
+curl -s -X POST localhost:3001/check -d '{"receiver":"shop.taskin-hack.testnet","amountYocto":"100000000000000000000000"}'
+```
+
+The response has `verdict`, human-readable `reasons`, the raw `signals` and `signed` (the oracle signature the guard contract checks). Rules: [packages/risk/src/score.ts](packages/risk/src/score.ts). NearBlocks' free API rate-limits (HTTP 429); answers are cached for 5 minutes and an unreachable indexer is reported in the reason and treated as unknown → `warn`, never `allow`.
+
 ## Architecture
 See [docs/DESIGN.md](docs/DESIGN.md).
 

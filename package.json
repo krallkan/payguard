@@ -7,7 +7,10 @@
   "license": "MIT",
   "scripts": {
     "keygen:oracle": "tsx scripts/keygen-oracle.ts",
-    "smoke": "tsx scripts/smoke.ts"
+    "smoke": "tsx scripts/smoke.ts",
+    "test": "tsx --test packages/*/test/*.test.ts",
+    "risk": "tsx packages/risk/src/server.ts",
+    "check": "tsx scripts/check.ts"
   },
   "dependencies": {
     "bs58": "^6.0.0",
