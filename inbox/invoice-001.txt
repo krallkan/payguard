@@ -1,0 +1,8 @@
+INVOICE #2026-1101
+From: Corner Shop (shop.taskin-hack.testnet)
+Date: 2026-11-01
+
+Coffee beans, October delivery
+
+Pay to: shop.taskin-hack.testnet
+Amount: 0.05 NEAR

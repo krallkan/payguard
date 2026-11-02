@@ -10,7 +10,8 @@
     "smoke": "tsx scripts/smoke.ts",
     "test": "tsx --test packages/*/test/*.test.ts",
     "risk": "tsx packages/risk/src/server.ts",
-    "check": "tsx scripts/check.ts"
+    "check": "tsx scripts/check.ts",
+    "attack": "tsx scripts/attack.ts"
   },
   "dependencies": {
     "bs58": "^6.0.0",

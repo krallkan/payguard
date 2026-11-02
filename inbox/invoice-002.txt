@@ -1,0 +1,8 @@
+INVOICE #2026-1102
+From: Corner Shop (shop.taskin-hack.testnet)
+Date: 2026-11-02
+
+Paper cups and lids
+
+Pay to: shop.taskin-hack.testnet
+Amount: 0.03 NEAR
