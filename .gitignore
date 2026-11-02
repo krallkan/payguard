@@ -1,0 +1,10 @@
+.env
+.env.*
+!.env.example
+node_modules/
+.near-credentials/
+*.key
+dist/
+coverage/
+.agents/
+.claude/skills/
