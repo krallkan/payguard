@@ -205,10 +205,10 @@ Tek teslim hakkı var, sonradan düzenlenemez. Hepsi ✅ olmadan gönderilmez.
 - [x] Repo geçmişinin hiçbir yerinde anahtar/sır yok (2 Kasım tarandı) (`git log -p | grep -iE "private|seed|secret|key"` ile kontrol)
 - [x] X demo gönderisi yayında: https://x.com/blokceyn/status/2117212782319824913
 - [x] Ödül için **mainnet NEAR hesabı** hazır (`kralkan.near`)
-- [ ] Projeye uyan **tüm kategoriler** seçildi
-- [ ] "What did you build?" metni hazır (20–2000 karakter: problem, nasıl yapıldı, NEAR'ın rolü)
+- [x] Projeye uyan **tüm kategoriler** seçildi (security, agents)
+- [x] "What did you build?" metni hazır (20–2000 karakter: problem, nasıl yapıldı, NEAR'ın rolü)
 - [x] LICENSE dosyası repoda (MIT)
-- [ ] Teslim **14 Kasım 23:59 UTC'den (15 Kasım 02:59 TR) önce**
+- [x] Teslim **14 Kasım 23:59 UTC'den (15 Kasım 02:59 TR) önce** — GÖNDERİLDİ 2 Kasım 2026, API HTTP 201. Tekrar gönderme.
 
 **Teslim formu alanları:** Proje adı · Takım lideri · E-posta · Takım büyüklüğü · Kategori(ler) · NEAR cüzdan adresi · Public GitHub linki · Public X demo gönderi linki · "What did you build?" açıklaması · Onay metni (HACKATHON.md'deki cümle Taşkın'a aynen okunur)
 
