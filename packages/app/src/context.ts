@@ -8,7 +8,7 @@ import { createRiskService } from "../../risk/src/service.js";
 import { signVerdict } from "../../risk/src/verdict.js";
 import { NearGuardClient, type GuardClient } from "../../agent/src/guard.js";
 import { GuardedWallet } from "../../agent/src/wallet.js";
-import { NearAiLlm, ScriptedLlm, type Llm } from "../../agent/src/llm.js";
+import { FallbackLlm, NearAiLlm, ScriptedLlm, type Llm } from "../../agent/src/llm.js";
 import { OwnerConsole } from "../../agent/src/owner.js";
 import { SimGuard } from "../../sim/src/sim-guard.js";
 import { DEMO_IDS, FIXTURE_ACCOUNTS, demoSources } from "../../sim/src/fixtures.js";
@@ -37,7 +37,7 @@ export async function createContext(env = process.env): Promise<AppContext> {
 }
 
 function pickLlm(env: NodeJS.ProcessEnv): Llm {
-  return env.NEAR_AI_API_KEY ? new NearAiLlm(env.NEAR_AI_API_KEY, env.NEAR_AI_MODEL || undefined) : new ScriptedLlm();
+  return env.NEAR_AI_API_KEY ? new FallbackLlm(new NearAiLlm(env.NEAR_AI_API_KEY, env.NEAR_AI_MODEL || undefined)) : new ScriptedLlm();
 }
 
 export async function createDemoContext(env = process.env): Promise<AppContext> {

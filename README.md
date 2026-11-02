@@ -2,8 +2,8 @@
 
 Built at NEAR HACKATHON 2026 (Nov 1–14). Tracks: `security`, `agents`
 
-> Status: Phase 3 — guard contract, risk service, guarded agent, attack demo and web console work on testnet.
-> Demo mode without keys or funds (Phase 4) is not built yet. Design: [docs/DESIGN.md](docs/DESIGN.md).
+> Status: guard contract, risk service, guarded agent, attack demo, web console and demo mode work (testnet + offline demo).
+> Demo video (95 s, recorded on testnet): [docs/media/payguard-demo.mp4](docs/media/payguard-demo.mp4). Design: [docs/DESIGN.md](docs/DESIGN.md).
 
 ## What it is
 A counterparty check for AI agents that pay. Before an agent sends funds, a risk service scores the
@@ -173,7 +173,7 @@ More detail and design decisions: [docs/DESIGN.md](docs/DESIGN.md).
 - **The guard account still has its full-access key** so the contract can be redeployed during the hackathon. In production that key should be removed so only the contract code controls the funds.
 - **Web console has no login.** It binds to `127.0.0.1` only and is meant to run on the owner's machine.
 - **Demo mode simulates the contract in TypeScript**, it does not execute the wasm. Parity is enforced by [packages/sim/test/sim-guard.test.ts](packages/sim/test/sim-guard.test.ts), which mirrors the Rust unit tests case by case.
-- **The scripted LLM is deliberately vulnerable**, so the attack is reproducible without an API key. The NEAR AI Cloud adapter uses the documented OpenAI-compatible endpoint (`https://cloud-api.near.ai/v1`) but has not been run against the live API in this repo's recorded logs.
+- **The scripted LLM is deliberately vulnerable**, so the attack is reproducible without an API key. The NEAR AI Cloud adapter uses the OpenAI-compatible endpoint (`https://cloud-api.near.ai/v1`); the key and model id were verified against `/v1/models`, but no completion has been recorded yet because the account had no credits. If NEAR AI Cloud fails (e.g. HTTP 402, no credits), the agent prints the error and continues with the scripted stand-in.
 - **Agent function-call key allowance is 0.25 NEAR of gas.** When it runs out the owner adds a new key (NEAR access-key rule: an allowance cannot be raised).
 - **Contract tests are unit tests**; there are no near-workspaces sandbox integration tests. The deployed contract is exercised end to end by `npm run smoke` and `npm run attack` (transaction links above).
 

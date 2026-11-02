@@ -89,6 +89,35 @@ export class ScriptedLlm implements Llm {
   }
 }
 
+/**
+ * Uses `primary` until it fails once (no credits, network error…), then says so in the agent's
+ * output and continues with `fallback`, so the demo never stalls on a missing API balance.
+ */
+export class FallbackLlm implements Llm {
+  readonly name: string;
+  private failed = false;
+  constructor(
+    private primary: Llm,
+    private fallback: Llm = new ScriptedLlm(),
+  ) {
+    this.name = `${primary.name}; falls back to ${fallback.name} if unavailable`;
+  }
+
+  async next(messages: Message[]) {
+    if (!this.failed) {
+      try {
+        return await this.primary.next(messages);
+      } catch (e: any) {
+        this.failed = true;
+        const why = String(e.message).replace(/\s+/g, " ").slice(0, 160);
+        const r = await this.fallback.next(messages);
+        return { ...r, content: `[${this.primary.name} unavailable: ${why} — continuing with ${this.fallback.name}]\n${r.content}` };
+      }
+    }
+    return this.fallback.next(messages);
+  }
+}
+
 const call = (i: number, receiver: string, amount_near: string, memo: string): ToolCall => ({
   id: `call_${i}`,
   name: "pay",

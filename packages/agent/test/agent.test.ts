@@ -32,3 +32,14 @@ test("toYocto", () => {
   assert.equal(toYocto("2"), "2000000000000000000000000");
   assert.throws(() => toYocto("-1"));
 });
+
+test("fallback LLM reports the outage and keeps the agent working", async () => {
+  const { FallbackLlm } = await import("../src/llm.js");
+  const broken = { name: "broken", next: async () => { throw new Error("HTTP 402: no credits"); } };
+  const logs: string[] = [];
+  const calls: string[] = [];
+  const wallet = { pay: async (r: string) => (calls.push(r), { status: "sent" }) };
+  await runAgent(new FallbackLlm(broken), wallet, inbox, (l) => logs.push(l));
+  assert.equal(calls.length, 3);
+  assert.ok(logs.some((l) => l.includes("broken unavailable: HTTP 402")));
+});
