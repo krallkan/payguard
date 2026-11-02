@@ -1,63 +1,27 @@
-# Basic Auction Contract 
+# PayGuard guard contract
 
-This directory contains a Rust contract that is used as part of the [Basic Auction Tutorial](https://docs.near.org/tutorials/auction/basic-auction).
+Holds an AI agent's funds and pays out only with a verdict signed by the PayGuard risk oracle.
+Deployed on testnet at [`guard.taskin-hack.testnet`](https://testnet.nearblocks.io/address/guard.taskin-hack.testnet).
+Project overview: [../README.md](../README.md).
 
-The contract is a simple auction where you can place bids, view the highest bid, and claim the tokens at the end of the auction.
+## Methods
 
-This repo showcases the basic anatomy of a smart contract application on NEAR Protocol that showcases how to store data in a contract, how to update the state, and then how to read it.
-There are also unit tests, integration tests, and CI/CD pipelines preconfigured for your reference.
+| Method | Caller | What it does |
+|---|---|---|
+| `new(owner, agent, oracle_pk, per_tx_limit, daily_limit)` | deployer | init |
+| `pay(receiver, amount, memo?, verdict)` | agent | verifies the oracle signature over `payguard-v1\|guard\|agent\|receiver\|amount\|verdict\|nonce\|expires_at`, nonce, expiry, blocklist, limits; `allow` → transfer, `warn` → held, `block` → panic |
+| `report(receiver, reason, evidence)` | anyone (0.01 NEAR deposit unless owner/agent) | adds a report to the shared blocklist |
+| `approve_pending(id)` / `reject_pending(id)` | owner | decides a held `warn` payment |
+| `set_limits`, `set_oracle_pk`, `set_agent`, `set_frozen`, `remove_from_blocklist`, `withdraw` | owner | admin |
+| `get_config`, `get_payments`, `get_pending`, `get_blocklist`, `is_blocked`, `is_nonce_used`, `verdict_message` | view | state for the UI and the risk service |
 
----
+Events are logged as `EVENT_JSON:{"standard":"payguard",...}` (`payment_sent`, `payment_pending`, `payment_rejected`, `payment_failed`, `receiver_reported`).
 
-## How to Build Locally?
-
-Install [`cargo-near`](https://github.com/near/cargo-near) and run:
-
-```bash
-cargo near build
-```
-
-## How to Test Locally?
-
-```bash
-cargo test
-```
-
-## How to Deploy?
-
-Deployment is automated with GitHub Actions CI/CD pipeline.
-To deploy manually, install [`cargo-near`](https://github.com/near/cargo-near) and run:
-
-If you deploy for debugging purposes:
+## Build and test (Linux / WSL)
 
 ```bash
-cargo near deploy build-non-reproducible-wasm
+cargo test --lib                        # 16 passed
+cargo near build non-reproducible-wasm  # wasm in target/near/
 ```
 
-If you deploy production ready smart contract:
-
-```bash
-cargo near deploy build-reproducible-wasm
-```
-
-## Initialize the contract
-
-```bash
-# on Linux / Windows WSL
-TWO_MINUTES_FROM_NOW=$(date -d '+2 minutes' +%s000000000)
-# on MacOS
-TWO_MINUTES_FROM_NOW=$(date -v+2M +%s000000000)
-
-near contract call-function as-transaction '<CONTRACT_ACCOUNT_ID>' init json-args '{"end_time": "'$TWO_MINUTES_FROM_NOW'", "auctioneer": "<AUCTIONEER_ACCOUNT_ID>"}' prepaid-gas '30.0 Tgas' attached-deposit '0 NEAR'
-```
-
-## Useful Links
-
-- [cargo-near](https://github.com/near/cargo-near) - NEAR smart contract development toolkit for Rust
-- [near CLI](https://near.cli.rs) - Interact with NEAR blockchain from command line
-- [NEAR Rust SDK Documentation](https://docs.near.org/sdk/rust/introduction)
-- [NEAR Documentation](https://docs.near.org)
-- [NEAR StackOverflow](https://stackoverflow.com/questions/tagged/nearprotocol)
-- [NEAR Discord](https://near.chat)
-- [NEAR Telegram Developers Community Group](https://t.me/neardev)
-- NEAR DevHub: [Telegram](https://t.me/neardevhub), [Twitter](https://twitter.com/neardevhub)
+Deploy and wire up accounts: [../scripts/deploy-testnet.sh](../scripts/deploy-testnet.sh).

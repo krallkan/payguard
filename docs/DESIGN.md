@@ -1,6 +1,6 @@
-# Design — PayGuard (working name)
+# Design — PayGuard
 
-Tracks: `security`, `agents`. Status: **draft, waiting for approval** (Phase 1).
+Tracks: `security`, `agents`. Status: approved 2026-11-02 and implemented (see the README for what runs). The sections below are the original design; deviations are listed in §13.
 
 ## 1. Problem
 
@@ -134,11 +134,16 @@ README.md  LICENSE  .env.example
 On testnet: deploy guard, add agent FC key, risk service signs an `allow`, agent calls `pay`,
 receiver gets 0.1 NEAR → explorer link. Then the same call with a blocked receiver fails.
 
-## 12. Open questions for Taşkın
+## 12. Decisions
 
-1. Project name (PayGuard is a placeholder).
-2. Rust toolchain is not installed on this machine (needed for the contract). OK to install
-   rustup + `wasm32-unknown-unknown` + cargo-near?
-3. `warn` approval channel for v1: web UI only, or also SMS (stretch)?
-4. Agent API (agentsonintents) policy-bound wallet as a second backend — skip for now (its
-   destination/budget rules overlap ours and it is mainnet-only via Intents)?
+1. Name: PayGuard.
+2. Tooling: Rust, cargo-near and near-cli-rs run in WSL Ubuntu (GitHub release downloads are blocked on the Windows host).
+3. `warn` approval: web console and CLI (`npm run owner`). SMS is not built.
+4. Agent API (agentsonintents): skipped; mainnet-only and overlaps the guard's own limits.
+
+## 13. Deviations from the original design
+
+- Owner actions in the web console are signed with a second function-call key (approve/reject/report/freeze only) instead of the owner's full-access key.
+- `age_unknown` does not warn for receivers the guard already paid successfully (NearBlocks testnet lags behind the chain).
+- Demo mode runs an in-memory TypeScript port of the contract (`packages/sim`) with parity tests.
+- Added a `newvendor` account (warn flow) and a `vault` fixture (recent code change).

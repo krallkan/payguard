@@ -1,4 +1,4 @@
-# PayGuard (working name)
+# PayGuard
 
 Built at NEAR HACKATHON 2026 (Nov 1–14). Tracks: `security`, `agents`
 
@@ -97,7 +97,7 @@ npm run web        # http://localhost:3000
 
 The same owner actions from a terminal: `npm run owner -- pending`, `npm run owner -- approve <id>`.
 
-Prompt-injection attack demo (spends ~0.08 testnet NEAR from the guard):
+Prompt-injection attack demo on testnet (`DEMO=0` in `.env`; spends ~0.08 testnet NEAR from the guard — `npm run demo:attack` runs the same thing without funds):
 
 ```bash
 npm run attack
@@ -120,10 +120,69 @@ Act 2 assumes the attacker controls the agent process and skips the wallet: a ge
 The risk service response has `verdict`, human-readable `reasons`, the raw `signals` and `signed` (the oracle signature the guard contract checks). Rules: [packages/risk/src/score.ts](packages/risk/src/score.ts). NearBlocks' free API rate-limits (HTTP 429); answers are cached for 5 minutes and an unreachable indexer is reported in the reason and treated as unknown → `warn`, never `allow`.
 
 ## Architecture
-See [docs/DESIGN.md](docs/DESIGN.md).
+
+```
+ untrusted text ──► Agent (LLM) ── pay(receiver, amount) ──► GuardedWallet
+ (invoices, mail)                                               │
+                                     1. check(receiver, amount) ▼
+                                  ┌──────────────── Risk service ─────────────────┐
+                                  │ signals: NEAR RPC (exists, contract?)         │
+                                  │          NearBlocks (age, tx count, deploys)  │
+                                  │          guard views (blocklist, history)     │
+                                  │ rules → allow | warn | block + reasons        │
+                                  │ ed25519-sign(guard|agent|receiver|amount|     │
+                                  │              verdict|nonce|expires_at)        │
+                                  └───────────────────────┬───────────────────────┘
+                                                          ▼
+                     2. block → wallet refuses, nothing is signed
+                     3. allow / warn → guard.pay(receiver, amount, verdict)
+                        signed by the agent's function-call key
+                                                          ▼
+                  ┌──────────── guard contract (holds the funds) ─────────────┐
+                  │ not frozen · caller is the agent · signature valid for   │
+                  │ this exact receiver+amount · nonce unused · not expired · │
+                  │ verdict ≠ block · receiver not blocklisted · per-tx limit │
+                  │ allow → daily limit + balance → transfer → callback       │
+                  │ warn  → held until owner approve_pending / reject_pending │
+                  └───────────────────────────────────────────────────────────┘
+```
+
+Why two layers: the wallet is code in the agent's process, so an attacker who owns that process can skip it. The contract cannot be skipped — the agent's only key can call nothing but `pay`/`report` on it, and `pay` needs a signature the agent cannot produce. The contract also does not trust the oracle blindly: the blocklist and limits apply to `allow` too.
+
+| Path | What it is |
+|---|---|
+| [contract/src/lib.rs](contract/src/lib.rs) | Guard contract (Rust, near-sdk 5), 16 unit tests |
+| [packages/risk/](packages/risk/) | Signals, scoring rules, verdict signing, HTTP service (`npm run risk`) |
+| [packages/agent/](packages/agent/) | GuardedWallet, agent loop, LLM adapters (NEAR AI Cloud / scripted), owner console, `GuardClient` for testnet |
+| [packages/sim/](packages/sim/) | Demo mode: in-memory guard with the contract's rules, fixture accounts |
+| [packages/app/](packages/app/) | Picks demo or testnet and wires everything together |
+| [packages/web/](packages/web/) | Web console (`npm run web` / `npm run demo`) |
+| [scripts/](scripts/) | Deploy, attack demo, smoke test, CLI check, owner CLI, oracle keygen |
+| [inbox/](inbox/) | Demo invoices; `invoice-003.txt` carries the prompt injection |
+
+More detail and design decisions: [docs/DESIGN.md](docs/DESIGN.md).
 
 ## Limits and known issues
-TBD.
+
+- **Testnet only, NEAR only.** The guard pays native NEAR. No fungible tokens (USDC) and no NEAR Intents yet; Intents has no testnet (HACKATHON.md Q-007).
+- **The oracle is one ed25519 key** held by the risk service. If it leaks, an attacker can sign `allow` for any receiver that is not blocklisted; the contract's per-transaction and daily limits cap the damage, and `set_oracle_pk` rotates the key. Running the risk service in a TEE (e.g. NEAR AI Cloud attestation) would harden this; not implemented.
+- **Risk rules are heuristics.** They catch blocklisted, missing, new and look-alike accounts, recent code changes and large first payments. A patient scammer with an old, clean account gets `allow` until someone reports it.
+- **Indexer data can be missing.** NearBlocks testnet lags behind the chain and its free API rate-limits (HTTP 429). Missing data is treated as unknown → `warn` (never `allow`), unless the guard already paid that receiver successfully.
+- **Blocklist griefing.** Anyone can report an account by attaching 0.01 NEAR, and one report blocks it. The owner can `remove_from_blocklist`. A production version needs reporter reputation or a threshold.
+- **One agent per guard**, set at init (`set_agent` changes it). Daily limit resets on the UTC calendar day.
+- **The guard account still has its full-access key** so the contract can be redeployed during the hackathon. In production that key should be removed so only the contract code controls the funds.
+- **Web console has no login.** It binds to `127.0.0.1` only and is meant to run on the owner's machine.
+- **Demo mode simulates the contract in TypeScript**, it does not execute the wasm. Parity is enforced by [packages/sim/test/sim-guard.test.ts](packages/sim/test/sim-guard.test.ts), which mirrors the Rust unit tests case by case.
+- **The scripted LLM is deliberately vulnerable**, so the attack is reproducible without an API key. The NEAR AI Cloud adapter uses the documented OpenAI-compatible endpoint (`https://cloud-api.near.ai/v1`) but has not been run against the live API in this repo's recorded logs.
+- **Agent function-call key allowance is 0.25 NEAR of gas.** When it runs out the owner adds a new key (NEAR access-key rule: an allowance cannot be raised).
+- **Contract tests are unit tests**; there are no near-workspaces sandbox integration tests. The deployed contract is exercised end to end by `npm run smoke` and `npm run attack` (transaction links above).
 
 ## Pre-existing code
-None. All code written during the hackathon window.
+
+None. All code in this repository was written during the hackathon (first commit 2026-11-02).
+
+Third-party libraries and templates: `near-sdk` (contract), the `cargo near new` project template (its auction example was replaced), `near-kit` (RPC and signing), `bs58`, `dotenv`, `tsx`, `typescript`, `ed25519-dalek` (contract tests only). NEAR agent skills (`npx skills add near/agent-skills`) were used as reference while building. This README and most code were written with Claude Code.
+
+## License
+
+MIT — see [LICENSE](LICENSE).
