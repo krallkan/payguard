@@ -11,7 +11,9 @@
     "test": "tsx --test packages/*/test/*.test.ts",
     "risk": "tsx packages/risk/src/server.ts",
     "check": "tsx scripts/check.ts",
-    "attack": "tsx scripts/attack.ts"
+    "attack": "tsx scripts/attack.ts",
+    "web": "tsx packages/web/src/server.ts",
+    "owner": "tsx scripts/owner.ts"
   },
   "dependencies": {
     "bs58": "^6.0.0",

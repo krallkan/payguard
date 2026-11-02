@@ -1,0 +1,228 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>PayGuard Console</title>
+<style>
+  :root {
+    --bg: #f6f7f9; --panel: #ffffff; --ink: #16181d; --muted: #646b78; --line: #e2e5ea;
+    --accent: #2f5bd3; --allow: #1d7a46; --allow-bg: #e5f4ec; --warn: #9a6200; --warn-bg: #fdf1dc;
+    --block: #b42323; --block-bg: #fbe6e6; --code: #f0f2f5;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root {
+      --bg: #111317; --panel: #1a1d23; --ink: #e8eaee; --muted: #9aa1ad; --line: #2b3039;
+      --accent: #7c9cff; --allow: #5fd394; --allow-bg: #173324; --warn: #f2b45a; --warn-bg: #3a2c12;
+      --block: #ff8080; --block-bg: #3d1a1a; --code: #22262e;
+    }
+  }
+  * { box-sizing: border-box; }
+  body { margin: 0; background: var(--bg); color: var(--ink); font: 14px/1.45 system-ui, -apple-system, "Segoe UI", sans-serif; }
+  header { display: flex; flex-wrap: wrap; gap: 12px; align-items: center; justify-content: space-between; padding: 16px 24px; border-bottom: 1px solid var(--line); background: var(--panel); }
+  header h1 { font-size: 18px; margin: 0; }
+  header .ids { color: var(--muted); font-size: 12px; }
+  main { max-width: 1200px; margin: 0 auto; padding: 20px 16px 48px; display: grid; gap: 16px; grid-template-columns: repeat(12, 1fr); }
+  section { background: var(--panel); border: 1px solid var(--line); border-radius: 10px; padding: 16px; min-width: 0; }
+  section h2 { font-size: 13px; text-transform: uppercase; letter-spacing: .04em; color: var(--muted); margin: 0 0 12px; }
+  .span-12 { grid-column: span 12; } .span-7 { grid-column: span 7; } .span-5 { grid-column: span 5; }
+  @media (max-width: 900px) { .span-7, .span-5 { grid-column: span 12; } }
+  .stats { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 12px; }
+  .stat { border: 1px solid var(--line); border-radius: 8px; padding: 10px 12px; }
+  .stat .k { color: var(--muted); font-size: 12px; }
+  .stat .v { font-size: 20px; font-weight: 600; font-variant-numeric: tabular-nums; }
+  .stat .s { color: var(--muted); font-size: 12px; overflow-wrap: anywhere; }
+  .bar { height: 6px; background: var(--code); border-radius: 3px; margin-top: 6px; overflow: hidden; }
+  .bar > i { display: block; height: 100%; background: var(--accent); }
+  button { font: inherit; border: 1px solid var(--line); background: var(--panel); color: var(--ink); border-radius: 7px; padding: 7px 12px; cursor: pointer; }
+  button.primary { background: var(--accent); border-color: var(--accent); color: #fff; }
+  button.ok { color: var(--allow); border-color: var(--allow); } button.no { color: var(--block); border-color: var(--block); }
+  button:disabled { opacity: .5; cursor: progress; }
+  input { font: inherit; padding: 7px 9px; border: 1px solid var(--line); border-radius: 7px; background: var(--bg); color: var(--ink); min-width: 0; }
+  form { display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 10px; }
+  form input { flex: 1 1 140px; }
+  pre { background: var(--code); border-radius: 8px; padding: 10px 12px; margin: 0; white-space: pre-wrap; overflow-wrap: anywhere; font: 12px/1.5 ui-monospace, Consolas, monospace; max-height: 420px; overflow: auto; }
+  table { width: 100%; border-collapse: collapse; font-variant-numeric: tabular-nums; }
+  th, td { text-align: left; padding: 7px 8px; border-bottom: 1px solid var(--line); vertical-align: top; }
+  th { color: var(--muted); font-weight: 500; font-size: 12px; }
+  .table-wrap { overflow-x: auto; }
+  .pill { display: inline-block; padding: 1px 8px; border-radius: 999px; font-size: 12px; font-weight: 600; }
+  .allow, .sent { color: var(--allow); background: var(--allow-bg); }
+  .warn, .pending { color: var(--warn); background: var(--warn-bg); }
+  .block, .rejected, .failed { color: var(--block); background: var(--block-bg); }
+  .muted { color: var(--muted); }
+  .row { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; }
+  .card { border: 1px solid var(--line); border-radius: 8px; padding: 10px 12px; margin-bottom: 8px; }
+  a { color: var(--accent); }
+  .empty { color: var(--muted); font-style: italic; }
+  .help { color: var(--muted); font-size: 12px; margin: 0 0 10px; }
+</style>
+</head>
+<body>
+<header>
+  <div>
+    <h1>PayGuard Console</h1>
+    <div class="ids" id="ids">loading…</div>
+  </div>
+  <div class="row">
+    <span id="frozen" class="pill"></span>
+    <button id="freezeBtn">Freeze</button>
+    <button id="refreshBtn">Refresh</button>
+  </div>
+</header>
+<main>
+  <section class="span-12">
+    <h2>Where the money is</h2>
+    <div class="stats" id="stats"></div>
+  </section>
+
+  <section class="span-7">
+    <h2>Agent</h2>
+    <p class="help">The agent pays invoices from <code>inbox/</code>. One invoice contains a prompt injection. Every payment goes through the risk check, then the guard contract.</p>
+    <div class="row" style="margin-bottom:10px">
+      <button class="primary" id="runAgent">Run agent on inbox</button>
+      <button id="showInbox">Show inbox</button>
+    </div>
+    <form id="payForm">
+      <input name="receiver" placeholder="receiver.testnet" required>
+      <input name="amountNear" placeholder="0.05" required style="flex:0 1 90px">
+      <input name="memo" placeholder="memo" style="flex:1 1 120px">
+      <button type="button" id="checkBtn">Check only</button>
+      <button type="submit">Agent pays</button>
+    </form>
+    <pre id="log">Agent output appears here.</pre>
+  </section>
+
+  <section class="span-5">
+    <h2>Waiting for you</h2>
+    <p class="help"><b>warn</b> payments are held by the guard contract until the owner approves them on-chain.</p>
+    <div id="pending"></div>
+  </section>
+
+  <section class="span-12">
+    <h2>Payment log (on-chain)</h2>
+    <div class="table-wrap"><table>
+      <thead><tr><th>#</th><th>Receiver</th><th>Amount</th><th>Verdict</th><th>Status</th><th>Memo</th><th>Time</th></tr></thead>
+      <tbody id="payments"></tbody>
+    </table></div>
+  </section>
+
+  <section class="span-12">
+    <h2>Shared blocklist</h2>
+    <form id="reportForm">
+      <input name="receiver" placeholder="account to report" required>
+      <input name="reason" placeholder="reason" required>
+      <input name="evidence" placeholder="evidence (link / tx)">
+      <button type="submit">Report</button>
+    </form>
+    <div id="blocklist"></div>
+  </section>
+</main>
+<script>
+const $ = (id) => document.getElementById(id);
+const esc = (s) => String(s ?? "").replace(/[&<>"]/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c]));
+const near = (y) => {
+  const b = BigInt(y || 0), w = b / 10n ** 24n, f = (b % 10n ** 24n).toString().padStart(24, "0").slice(0, 4).replace(/0+$/, "");
+  return f ? `${w}.${f}` : `${w}`;
+};
+const time = (ns) => new Date(Number(BigInt(ns) / 1000000n)).toLocaleString();
+const acct = (a) => `<a href="https://testnet.nearblocks.io/address/${esc(a)}" target="_blank" rel="noopener">${esc(a)}</a>`;
+const pill = (t) => `<span class="pill ${esc(t)}">${esc(t)}</span>`;
+let state;
+
+async function api(path, body) {
+  const res = await fetch(path, body === undefined ? {} : { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(body) });
+  const data = await res.json();
+  if (!res.ok) throw new Error(data.error || res.statusText);
+  return data;
+}
+
+async function busy(btn, fn) {
+  btn.disabled = true;
+  try { await fn(); } catch (e) { $("log").textContent = `Error: ${e.message}`; } finally { btn.disabled = false; }
+}
+
+async function load() {
+  state = await api("/api/state");
+  const c = state.config;
+  $("ids").textContent = `guard ${state.guard} · agent ${state.agent} · owner ${state.owner}`;
+  $("frozen").className = `pill ${c.frozen ? "block" : "allow"}`;
+  $("frozen").textContent = c.frozen ? "frozen" : "active";
+  $("freezeBtn").textContent = c.frozen ? "Unfreeze" : "Freeze";
+  $("freezeBtn").disabled = !state.ownerConsole;
+
+  const spentPct = Math.min(100, Number((BigInt(c.spent_today) * 100n) / BigInt(c.daily_limit || 1)));
+  const blocked = new Set(state.blocklist.map(([id]) => id));
+  const role = (id) => id === state.agent ? "Agent account (gas only)" : blocked.has(id) ? "Receiver · blocklisted" : "Receiver";
+  const others = Object.entries(state.balances).map(([id, bal]) =>
+    `<div class="stat"><div class="k">${role(id)}</div><div class="v">${bal ?? "—"} <small class="muted">NEAR</small></div><div class="s">${acct(id)}</div></div>`).join("");
+  $("stats").innerHTML = `
+    <div class="stat"><div class="k">Guard contract (agent's funds)</div><div class="v">${near(c.available)} <small class="muted">NEAR</small></div><div class="s">${acct(state.guard)}</div></div>
+    <div class="stat"><div class="k">Spent today / daily limit</div><div class="v">${near(c.spent_today)} / ${near(c.daily_limit)}</div><div class="bar"><i style="width:${spentPct}%"></i></div></div>
+    <div class="stat"><div class="k">Per-payment limit</div><div class="v">${near(c.per_tx_limit)} <small class="muted">NEAR</small></div></div>
+    ${others}`;
+
+  $("pending").innerHTML = state.pending.length ? state.pending.map((p) => `
+    <div class="card">
+      <div class="row" style="justify-content:space-between"><b>#${p.id} → ${acct(p.receiver)}</b><span>${near(p.amount)} NEAR</span></div>
+      <div class="muted">${esc(p.memo)} · ${time(p.created_at)}</div>
+      <div class="row" style="margin-top:8px">
+        <button class="ok" data-approve="${p.id}" ${state.ownerConsole ? "" : "disabled"}>Approve</button>
+        <button class="no" data-reject="${p.id}" ${state.ownerConsole ? "" : "disabled"}>Reject</button>
+      </div>
+    </div>`).join("") : `<div class="empty">Nothing waiting.</div>`;
+
+  $("payments").innerHTML = state.payments.length ? [...state.payments].reverse().map((p) => `
+    <tr><td>${p.id}</td><td>${acct(p.receiver)}</td><td>${near(p.amount)}</td><td>${pill(p.verdict)}</td><td>${pill(p.status)}</td><td>${esc(p.memo)}</td><td class="muted">${time(p.created_at)}</td></tr>`).join("")
+    : `<tr><td colspan="7" class="empty">No payments yet.</td></tr>`;
+
+  $("blocklist").innerHTML = state.blocklist.length ? state.blocklist.map(([id, reports]) => `
+    <div class="card"><b>${acct(id)}</b> ${pill("block")}
+      ${reports.map((r) => `<div class="muted" style="margin-top:4px">“${esc(r.reason)}” — ${esc(r.evidence || "no evidence")} · by ${esc(r.reporter)}</div>`).join("")}
+    </div>`).join("") : `<div class="empty">Blocklist is empty.</div>`;
+}
+
+const formData = (f) => Object.fromEntries(new FormData(f));
+const result = (r) => r.ok ? `OK  ${r.explorer}` : `REJECTED  ${r.error}\n${r.explorer}`;
+
+$("refreshBtn").onclick = (e) => busy(e.target, load);
+$("runAgent").onclick = (e) => busy(e.target, async () => {
+  $("log").textContent = "Running agent… (each payment waits for testnet finality)";
+  const r = await api("/api/agent/run", {});
+  $("log").textContent = r.log.join("\n");
+  await load();
+});
+$("showInbox").onclick = (e) => busy(e.target, async () => { $("log").textContent = (await api("/api/inbox")).inbox; });
+$("checkBtn").onclick = (e) => busy(e.target, async () => {
+  const d = formData($("payForm"));
+  const r = await api("/api/check", d);
+  $("log").textContent = `${r.verdict.toUpperCase()}  ${r.receiver}  ${d.amountNear} NEAR\n` +
+    r.reasons.map((x) => `  [${x.level}] ${x.text}`).join("\n") + `\n\nsignals: ${JSON.stringify({ ...r.signals, knownReceivers: undefined }, null, 2)}`;
+});
+$("payForm").onsubmit = (ev) => { ev.preventDefault(); busy(ev.submitter, async () => {
+  $("log").textContent = "Paying…";
+  const r = await api("/api/pay", formData($("payForm")));
+  $("log").textContent = r.log.join("\n") + `\n\n→ ${r.outcome.status}`;
+  await load();
+}); };
+$("reportForm").onsubmit = (ev) => { ev.preventDefault(); busy(ev.submitter, async () => {
+  $("log").textContent = result(await api("/api/owner/report", formData($("reportForm"))));
+  ev.target.reset(); await load();
+}); };
+$("freezeBtn").onclick = (e) => busy(e.target, async () => {
+  $("log").textContent = result(await api("/api/owner/freeze", { frozen: !state.config.frozen })); await load();
+});
+document.addEventListener("click", (e) => {
+  const a = e.target.dataset?.approve, r = e.target.dataset?.reject;
+  if (a === undefined && r === undefined) return;
+  busy(e.target, async () => {
+    const res = await api(a !== undefined ? "/api/owner/approve" : "/api/owner/reject", { id: Number(a ?? r) });
+    $("log").textContent = `${a !== undefined ? "approve" : "reject"} #${a ?? r}: ${result(res)}`;
+    await load();
+  });
+});
+load().catch((e) => { $("ids").textContent = `Error: ${e.message}`; });
+setInterval(() => load().catch(() => {}), 15000);
+</script>
+</body>
+</html>

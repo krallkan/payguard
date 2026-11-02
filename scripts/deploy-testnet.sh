@@ -45,11 +45,19 @@ agent_key() {
     autogenerate-new-keypair save-to-legacy-keychain $NET $SIGN 2>&1 | quiet
 }
 
+owner_key() {
+  echo "== add owner-console function-call key to $OWNER_ACCOUNT_ID (approve/reject/report/freeze only)"
+  near account add-key "$OWNER_ACCOUNT_ID" grant-function-call-access --allowance '0.25 NEAR' \
+    --contract-account-id "$GUARD_CONTRACT_ID" --function-names 'approve_pending, reject_pending, report, set_frozen' \
+    autogenerate-new-keypair save-to-legacy-keychain $NET $SIGN 2>&1 | quiet
+}
+
 case "${1:-all}" in
   deploy) deploy ;;
   fund) fund ;;
   report) report ;;
   agent-key) agent_key ;;
-  all) deploy; fund; report; agent_key ;;
+  owner-key) owner_key ;;
+  all) deploy; fund; report; agent_key; owner_key ;;
   *) echo "unknown step: $1"; exit 1 ;;
 esac

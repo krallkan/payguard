@@ -2,8 +2,8 @@
 
 Built at NEAR HACKATHON 2026 (Nov 1–14). Tracks: `security`, `agents`
 
-> Status: Phase 2 — guard contract live on testnet, end-to-end payment flow works from a script.
-> Risk service, agent wrapper, web UI and demo mode are not built yet. Design: [docs/DESIGN.md](docs/DESIGN.md).
+> Status: Phase 3 — guard contract, risk service, guarded agent, attack demo and web console work on testnet.
+> Demo mode without keys or funds (Phase 4) is not built yet. Design: [docs/DESIGN.md](docs/DESIGN.md).
 
 ## What it is
 A counterparty check for AI agents that pay. Before an agent sends funds, a risk service scores the
@@ -66,6 +66,20 @@ npm run check -- shop.taskin-hack.testnet 0.1           # → ALLOW, "paid 1 tim
 npm run risk                                            # HTTP on :3001
 curl -s -X POST localhost:3001/check -d '{"receiver":"shop.taskin-hack.testnet","amountYocto":"100000000000000000000000"}'
 ```
+
+Web console (needs a filled `.env`; owner actions are signed with `OWNER_CONSOLE_KEY`, a function-call key limited to `approve_pending`, `reject_pending`, `report`, `set_frozen`):
+
+```bash
+npm run web        # http://localhost:3000
+```
+
+1. "Where the money is" shows the guard balance, spend today vs. the daily limit, and each demo account's balance.
+2. Click **Run agent on inbox** → the log shows two `SENT` invoices and `REFUSED — verdict block, nothing signed` for the injected one.
+3. Enter `newvendor.taskin-hack.testnet`, `0.05`, click **Agent pays** → `[warn] account age unknown … never paid before` and `HELD by guard`. The payment appears under **Waiting for you**.
+4. Click **Approve** → `approve #N: OK` with an explorer link; the row becomes `warn / sent` and newvendor's balance rises by 0.05.
+5. **Report** adds an account to the on-chain blocklist; **Freeze** stops every payment until unfrozen.
+
+The same owner actions from a terminal: `npm run owner -- pending`, `npm run owner -- approve <id>`.
 
 Prompt-injection attack demo (spends ~0.08 testnet NEAR from the guard):
 
