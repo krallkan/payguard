@@ -42,7 +42,7 @@ export class NearAiLlm implements Llm {
   readonly name: string;
   constructor(
     private apiKey: string,
-    private model = "deepseek-ai/DeepSeek-V3.1",
+    private model = "deepseek-ai/DeepSeek-V4.1-Flash-1017",
     private baseUrl = "https://cloud-api.near.ai/v1",
   ) {
     this.name = `NEAR AI Cloud (${model})`;
