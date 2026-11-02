@@ -62,7 +62,7 @@ touch .env.example README.md
 - [x] Testnet hesabı aç (ör. `taskin-hack.testnet`), anahtarları sadece `.env` içine koy
 - [x] **Mainnet NEAR hesabı** hazırla (ödül bu adrese gelir). Private key / seed phrase kimseyle ve Claude ile paylaşılmaz
 - [ ] Gerekiyorsa API anahtarları al (NEAR AI Cloud, 1Click / Intents Explorer JWT, Agent API demo key)
-- [ ] GitHub'da **public** repo aç
+- [x] GitHub'da **public** repo aç (https://github.com/krallkan/payguard)
 
 **Faz 0 checkpoint:** Claude, HACKATHON.md'yi okuduğunu kanıtlamak için 13 kategori id'sini listeler ve kategori seçimini bekler.
 
@@ -200,14 +200,14 @@ Repo: <github link>
 
 Tek teslim hakkı var, sonradan düzenlenemez. Hepsi ✅ olmadan gönderilmez.
 
-- [ ] Repo **public** ve README'de "do X, see Y" adımları var
-- [ ] Demo modu temiz bir klonda çalışıyor (Claude yeni bir klasöre clone edip test eder)
-- [ ] Repo geçmişinin hiçbir yerinde anahtar/sır yok (`git log -p | grep -iE "private|seed|secret|key"` ile kontrol)
-- [ ] X demo gönderisi yayında, "NEAR HACKATHON" geçiyor, @NEARProtocol + #NEARHackathon var, video/ekran görüntüsü ekli
+- [x] Repo **public** ve README'de "do X, see Y" adımları var
+- [x] Demo modu temiz bir klonda çalışıyor (2 Kasım'da test edildi)
+- [x] Repo geçmişinin hiçbir yerinde anahtar/sır yok (2 Kasım tarandı) (`git log -p | grep -iE "private|seed|secret|key"` ile kontrol)
+- [x] X demo gönderisi yayında: https://x.com/blokceyn/status/2117212782319824913
 - [x] Ödül için **mainnet NEAR hesabı** hazır (`kralkan.near`)
 - [ ] Projeye uyan **tüm kategoriler** seçildi
 - [ ] "What did you build?" metni hazır (20–2000 karakter: problem, nasıl yapıldı, NEAR'ın rolü)
-- [ ] LICENSE dosyası repoda (MIT)
+- [x] LICENSE dosyası repoda (MIT)
 - [ ] Teslim **14 Kasım 23:59 UTC'den (15 Kasım 02:59 TR) önce**
 
 **Teslim formu alanları:** Proje adı · Takım lideri · E-posta · Takım büyüklüğü · Kategori(ler) · NEAR cüzdan adresi · Public GitHub linki · Public X demo gönderi linki · "What did you build?" açıklaması · Onay metni (HACKATHON.md'deki cümle Taşkın'a aynen okunur)
