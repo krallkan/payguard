@@ -1,0 +1,22 @@
+{
+  "name": "payguard",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "description": "Counterparty check for AI agents that pay, enforced by a NEAR guard contract",
+  "license": "MIT",
+  "scripts": {
+    "keygen:oracle": "tsx scripts/keygen-oracle.ts",
+    "smoke": "tsx scripts/smoke.ts"
+  },
+  "dependencies": {
+    "bs58": "^6.0.0",
+    "dotenv": "^18.0.9",
+    "near-kit": "^0.20.2"
+  },
+  "devDependencies": {
+    "@types/node": "^26.6.6",
+    "tsx": "^4.23.15",
+    "typescript": "^7.0.2"
+  }
+}
