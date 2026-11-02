@@ -3,8 +3,8 @@
 //   block → refuse, nothing is signed
 //   warn  → submit to the guard, which holds the payment until the owner approves on-chain
 //   allow → submit to the guard, which re-checks the signature, limits and blocklist, then pays
-import { Near } from "near-kit";
 import type { CheckResult } from "../../risk/src/service.js";
+import type { GuardClient, PayArgs } from "./guard.js";
 
 export type PayOutcome =
   | { status: "sent"; txHash: string | null; check: CheckResult }
@@ -13,14 +13,10 @@ export type PayOutcome =
   | { status: "refused_by_contract"; txHash: string | null; error: string; check?: CheckResult };
 
 export interface WalletConfig {
-  guard: string;
-  agent: string;
-  agentKey: string; // function-call key scoped to the guard
+  guard: GuardClient;
   check: (receiver: string, amountYocto: string) => Promise<CheckResult>;
   log?: (line: string) => void;
 }
-
-export const explorerTx = (h: string | null) => `https://testnet.nearblocks.io/txns/${h}`;
 
 export function toYocto(near: string): string {
   if (!/^\d+(\.\d{1,24})?$/.test(near)) throw new Error(`bad NEAR amount: ${near}`);
@@ -29,11 +25,9 @@ export function toYocto(near: string): string {
 }
 
 export class GuardedWallet {
-  private near: Near;
   private log: (line: string) => void;
 
   constructor(private cfg: WalletConfig) {
-    this.near = new Near({ network: "testnet", privateKey: cfg.agentKey as `ed25519:${string}`, defaultSignerId: cfg.agent });
     this.log = cfg.log ?? console.log;
   }
 
@@ -48,9 +42,9 @@ export class GuardedWallet {
       return { status: "refused_by_wrapper", check };
     }
     const res = await this.submit({ receiver, amount: amountYocto, memo, verdict: check.signed });
-    if (!res.ok) return { status: "refused_by_contract", txHash: res.txHash, error: res.error, check };
+    if (!res.ok) return { status: "refused_by_contract", txHash: res.txHash, error: res.error ?? "", check };
     if (check.verdict === "warn") {
-      this.log(`  wallet: HELD by guard — owner must approve (npm run owner -- approve <id>)`);
+      this.log(`  wallet: HELD by guard — owner must approve (web console or: npm run owner -- approve <id>)`);
       return { status: "pending_owner", txHash: res.txHash, check };
     }
     this.log(`  wallet: SENT`);
@@ -58,20 +52,10 @@ export class GuardedWallet {
   }
 
   /** Calls `pay` on the guard. Exposed so the attack demo can show the contract layer alone. */
-  async submit(args: { receiver: string; amount: string; memo: string; verdict: unknown }) {
-    const tx = this.near
-      .transaction(this.cfg.agent)
-      .functionCall(this.cfg.guard, "pay", args, { gas: "50 Tgas" });
-    await tx.sign();
-    const txHash = tx.getHash();
-    try {
-      await tx.send();
-      this.log(`  guard: accepted  ${explorerTx(txHash)}`);
-      return { ok: true as const, txHash };
-    } catch (e: any) {
-      const error = String(e.panic ?? e.message);
-      this.log(`  guard: REJECTED — ${error}  ${explorerTx(txHash)}`);
-      return { ok: false as const, txHash, error };
-    }
+  async submit(args: PayArgs) {
+    const res = await this.cfg.guard.pay(args);
+    const where = res.explorer ?? `(demo tx ${res.txHash})`;
+    this.log(res.ok ? `  guard: accepted  ${where}` : `  guard: REJECTED — ${res.error}  ${where}`);
+    return res;
   }
 }

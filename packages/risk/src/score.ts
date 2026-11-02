@@ -47,8 +47,7 @@ export function assess(s: Signals, amountYocto: string, now = Date.now(), policy
     if (s.createdAtMs === null && s.priorPaymentsToReceiver === 0) {
       const why = s.indexerError ? `indexer unavailable: ${s.indexerError}` : "indexer has no record";
       add("warn", "age_unknown", `account age unknown (${why}) and never paid before`);
-    }
-    else if (now - s.createdAtMs < policy.newAccountMs) add("warn", "new_account", `account created ${hours(now - s.createdAtMs)} ago`);
+    } else if (s.createdAtMs !== null && now - s.createdAtMs < policy.newAccountMs) add("warn", "new_account", `account created ${hours(now - s.createdAtMs)} ago`);
 
     if (s.lastDeployAtMs !== null && now - s.lastDeployAtMs < policy.recentDeployMs)
       add("warn", "recent_deploy", `contract code changed ${hours(now - s.lastDeployAtMs)} ago`);

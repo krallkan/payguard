@@ -1,9 +1,12 @@
-// Owner console CLI: npm run owner -- <pending|approve <id>|reject <id>|freeze|unfreeze>
+// Owner console CLI (testnet): npm run owner -- <pending|approve <id>|reject <id>|freeze|unfreeze>
+// Demo mode keeps state in the web console's process, so use the console's buttons there.
 import "dotenv/config";
-import { OwnerConsole } from "../packages/agent/src/owner.js";
+import { createContext } from "../packages/app/src/context.js";
 
-const owner = new OwnerConsole(process.env.GUARD_CONTRACT_ID!, process.env.OWNER_ACCOUNT_ID!, process.env.OWNER_CONSOLE_KEY);
 const [cmd, arg] = process.argv.slice(2);
+const ctx = await createContext();
+if (ctx.mode === "demo") console.log("note: demo mode starts a fresh simulated guard; set DEMO=0 to act on testnet");
+const owner = ctx.owner;
 const near = (y: string) => (Number(BigInt(y) / 10n ** 20n) / 10_000).toString();
 
 switch (cmd) {

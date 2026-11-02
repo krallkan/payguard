@@ -17,10 +17,26 @@ full-access key (no protection) or need a human to approve every payment (not au
 ## How NEAR is used
 - Contract: [`guard.taskin-hack.testnet`](https://testnet.nearblocks.io/address/guard.taskin-hack.testnet) — holds the agent's funds, verifies the oracle's ed25519 signature (`env::ed25519_verify`) over `(guard, agent, receiver, amount, verdict, nonce, expiry)`, rejects replays, enforces per-transaction and daily limits, keeps a shared blocklist with evidence, holds `warn` payments for the owner. Source: [contract/src/lib.rs](contract/src/lib.rs).
 - Function-call access key: `agent.taskin-hack.testnet` signs with a key limited to `receiver_id = guard.taskin-hack.testnet`, `method_names = ["pay", "report"]`, allowance 0.25 NEAR. It cannot transfer NEAR, attach deposits, call other contracts or add keys.
-- NEAR RPC + NearBlocks testnet API: receiver signals (age, activity, contract code changes) — planned.
+- Owner console key: a second function-call key on `taskin-hack.testnet`, limited to `approve_pending`, `reject_pending`, `report`, `set_frozen` — the web console can approve held payments but cannot withdraw or change limits.
+- NEAR RPC + NearBlocks testnet API: receiver signals (account exists, is a contract, account age, transaction count, last code deploy).
 
 ## Try it in 5 minutes (no funds needed)
-TBD (Phase 4): `npm install && npm run demo`.
+
+Needs Node.js 20+ and git. No `.env`, keys, wallet or NEAR are required: demo mode runs the guard contract's rules in an in-memory simulator ([packages/sim/src/sim-guard.ts](packages/sim/src/sim-guard.ts), same checks and panic messages as [contract/src/lib.rs](contract/src/lib.rs), real ed25519 signatures) against fixture accounts.
+
+1. `git clone <repo> && cd <repo>`
+2. `npm install`
+3. `npm test` → you should see `# pass 34` and `# fail 0`.
+4. `npm run demo:attack` → the terminal ends with `RESULT: refund-desk.taskin-hack.testnet received nothing`; the summary lists two `sent` invoices, one `refused_by_wrapper` and two `refused_by_contract`.
+5. `npm run demo` → open http://localhost:3000. The header shows `demo mode · simulated contract`.
+   - Click **Run agent on inbox** → the log shows `SENT` twice and, for the injected invoice, `[block] on the shared blocklist …` and `REFUSED — verdict block, nothing signed`.
+   - Click **Attacker bypasses wallet** → `REJECTED — Smart contract panicked: invalid oracle signature`, then `REJECTED — Smart contract panicked: receiver is on the shared blocklist`.
+   - Enter `newvendor.taskin-hack.testnet`, `0.05`, click **Agent pays** → `[warn] account age unknown …` and `HELD by guard`; the payment appears under **Waiting for you**. Click **Approve** → `approve #N: OK`, newvendor's balance goes from 0.10 to 0.15.
+   - Enter `vault.taskin-hack.testnet`, `0.1`, click **Check only** → `WARN` with `contract code changed 2h ago`.
+
+Demo state lives in memory and resets when the server restarts. Fixture accounts and their facts: [packages/sim/src/fixtures.ts](packages/sim/src/fixtures.ts).
+
+To run against the real testnet contract instead, fill `.env` from `.env.example` with `DEMO=0` and the keys (see [scripts/deploy-testnet.sh](scripts/deploy-testnet.sh)); `npm run web`, `npm run attack`, `npm run check` and `npm run owner` then use testnet.
 
 ## What works today (testnet)
 

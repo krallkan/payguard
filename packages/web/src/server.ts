@@ -4,71 +4,51 @@ import "dotenv/config";
 import { createServer, type ServerResponse } from "node:http";
 import { readFileSync } from "node:fs";
 import { fileURLToPath } from "node:url";
-import { liveSources } from "../../risk/src/signals.js";
-import { createRiskService } from "../../risk/src/service.js";
-import { GuardedWallet, toYocto } from "../../agent/src/wallet.js";
-import { NearAiLlm, ScriptedLlm } from "../../agent/src/llm.js";
+import { createContext } from "../../app/src/context.js";
+import { toYocto } from "../../agent/src/wallet.js";
 import { readInbox, runAgent } from "../../agent/src/agent.js";
-import { OwnerConsole } from "../../agent/src/owner.js";
 
-const env = (k: string, d?: string) => {
-  const v = process.env[k] || d;
-  if (!v) throw new Error(`missing ${k} in .env`);
-  return v;
-};
-const GUARD = env("GUARD_CONTRACT_ID");
-const AGENT = env("AGENT_ACCOUNT_ID");
-const OWNER = env("OWNER_ACCOUNT_ID");
-const watch = [AGENT, process.env.SHOP_ACCOUNT_ID, process.env.BAD_ACCOUNT_ID, process.env.NEWVENDOR_ACCOUNT_ID].filter(Boolean) as string[];
-
-const risk = createRiskService({
-  sources: liveSources({
-    rpcUrl: env("NEAR_RPC_URL", "https://rpc.testnet.near.org"),
-    nearblocksUrl: env("NEARBLOCKS_API_URL", "https://api-testnet.nearblocks.io"),
-    guard: GUARD,
-  }),
-  guard: GUARD,
-  agent: AGENT,
-  oracleKey: env("ORACLE_PRIVATE_KEY"),
-});
-const owner = new OwnerConsole(GUARD, OWNER, process.env.OWNER_CONSOLE_KEY, watch);
+const ctx = await createContext();
 const inboxDir = fileURLToPath(new URL("../../../inbox", import.meta.url));
 const indexHtml = fileURLToPath(new URL("../public/index.html", import.meta.url));
+const canOwn = ctx.mode === "demo" || !!process.env.OWNER_CONSOLE_KEY;
 
-/** A wallet whose log lines are collected for the response. */
-function walletWithLog() {
+function collector() {
   const lines: string[] = [];
-  const log = (l: string) => lines.push(l);
-  const wallet = new GuardedWallet({
-    guard: GUARD,
-    agent: AGENT,
-    agentKey: env("AGENT_PRIVATE_KEY"),
-    check: (receiver, amountYocto) => risk({ receiver, amountYocto }),
-    log,
-  });
-  return { wallet, lines, log };
+  return { lines, log: (l: string) => lines.push(l) };
 }
 
 const routes: Record<string, (body: any) => Promise<unknown>> = {
-  "GET /api/state": async () => ({ guard: GUARD, agent: AGENT, owner: OWNER, ownerConsole: !!process.env.OWNER_CONSOLE_KEY, ...(await owner.state()) }),
-  "POST /api/check": async (b) => risk({ receiver: String(b.receiver), amountYocto: toYocto(String(b.amountNear)) }),
+  "GET /api/state": async () => ({ mode: ctx.mode, ...ctx.ids, ownerConsole: canOwn, ...(await ctx.owner.state()) }),
+  "POST /api/check": async (b) => ctx.check({ receiver: String(b.receiver), amountYocto: toYocto(String(b.amountNear)) }),
   "POST /api/pay": async (b) => {
-    const { wallet, lines } = walletWithLog();
-    const outcome = await wallet.pay(String(b.receiver), String(b.amountNear), String(b.memo ?? "manual"));
-    return { outcome: { ...outcome, check: undefined, verdict: outcome.check?.verdict }, log: lines };
+    const { lines, log } = collector();
+    const outcome = await ctx.wallet(log).pay(String(b.receiver), String(b.amountNear), String(b.memo || "manual"));
+    return { outcome: { status: outcome.status, verdict: (outcome as any).check?.verdict }, log: lines };
   },
   "POST /api/agent/run": async () => {
-    const { wallet, lines, log } = walletWithLog();
-    const llm = process.env.NEAR_AI_API_KEY ? new NearAiLlm(process.env.NEAR_AI_API_KEY, process.env.NEAR_AI_MODEL || undefined) : new ScriptedLlm();
-    log(`LLM: ${llm.name}`);
-    const outcomes = await runAgent(llm, wallet, readInbox(inboxDir), log);
+    const { lines, log } = collector();
+    log(`LLM: ${ctx.llm.name}`);
+    const outcomes = await runAgent(ctx.llm, ctx.wallet(log), readInbox(inboxDir), log);
     return { outcomes, log: lines };
   },
+  "POST /api/attack/bypass": async () => {
+    // The attacker owns the agent process and calls the guard directly, skipping the wallet.
+    const { lines, log } = collector();
+    const w = ctx.wallet(log);
+    const amount = toYocto("0.2");
+    log(`2a. genuine allow issued for ${ctx.ids.shop}, re-targeted to ${ctx.ids.bad}`);
+    const shopAllow = await ctx.check({ receiver: ctx.ids.shop, amountYocto: amount });
+    await w.submit({ receiver: ctx.ids.bad, amount, memo: "bypass: re-targeted verdict", verdict: shopAllow.signed });
+    log(`\n2b. compromised oracle signs allow for ${ctx.ids.bad}`);
+    await w.submit({ receiver: ctx.ids.bad, amount, memo: "bypass: compromised oracle", verdict: ctx.compromisedOracleSign(ctx.ids.bad, amount) });
+    return { log: lines };
+  },
   "GET /api/inbox": async () => ({ inbox: readInbox(inboxDir) }),
-  "POST /api/owner/approve": async (b) => owner.approve(Number(b.id)),
-  "POST /api/owner/reject": async (b) => owner.reject(Number(b.id)),
-  "POST /api/owner/freeze": async (b) => owner.freeze(Boolean(b.frozen)),
-  "POST /api/owner/report": async (b) => owner.report(String(b.receiver), String(b.reason), String(b.evidence ?? "")),
+  "POST /api/owner/approve": async (b) => ctx.owner.approve(Number(b.id)),
+  "POST /api/owner/reject": async (b) => ctx.owner.reject(Number(b.id)),
+  "POST /api/owner/freeze": async (b) => ctx.owner.freeze(Boolean(b.frozen)),
+  "POST /api/owner/report": async (b) => ctx.owner.report(String(b.receiver), String(b.reason), String(b.evidence ?? "")),
 };
 
 const json = (res: ServerResponse, status: number, body: unknown) => {
@@ -95,4 +75,7 @@ createServer(async (req, res) => {
   } catch (e: any) {
     json(res, 400, { error: e.message });
   }
-}).listen(port, "127.0.0.1", () => console.log(`PayGuard console on http://localhost:${port}`));
+}).listen(port, "127.0.0.1", () => {
+  console.log(`PayGuard console (${ctx.mode} mode) on http://localhost:${port}`);
+  if (ctx.mode === "demo") console.log("Demo mode: simulated guard contract and fixtures, no keys or funds needed. Set DEMO=0 in .env for testnet.");
+});

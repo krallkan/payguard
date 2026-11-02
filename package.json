@@ -13,7 +13,10 @@
     "check": "tsx scripts/check.ts",
     "attack": "tsx scripts/attack.ts",
     "web": "tsx packages/web/src/server.ts",
-    "owner": "tsx scripts/owner.ts"
+    "owner": "tsx scripts/owner.ts",
+    "demo": "tsx scripts/demo.ts",
+    "demo:attack": "tsx scripts/demo.ts attack",
+    "typecheck": "tsc --noEmit"
   },
   "dependencies": {
     "bs58": "^6.0.0",

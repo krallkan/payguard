@@ -65,6 +65,7 @@
     <div class="ids" id="ids">loading…</div>
   </div>
   <div class="row">
+    <span id="mode" class="pill"></span>
     <span id="frozen" class="pill"></span>
     <button id="freezeBtn">Freeze</button>
     <button id="refreshBtn">Refresh</button>
@@ -82,6 +83,7 @@
     <div class="row" style="margin-bottom:10px">
       <button class="primary" id="runAgent">Run agent on inbox</button>
       <button id="showInbox">Show inbox</button>
+      <button class="no" id="bypass" title="Attacker controls the agent process and calls the guard contract directly">Attacker bypasses wallet</button>
     </div>
     <form id="payForm">
       <input name="receiver" placeholder="receiver.testnet" required>
@@ -100,7 +102,7 @@
   </section>
 
   <section class="span-12">
-    <h2>Payment log (on-chain)</h2>
+    <h2 id="logTitle">Payment log</h2>
     <div class="table-wrap"><table>
       <thead><tr><th>#</th><th>Receiver</th><th>Amount</th><th>Verdict</th><th>Status</th><th>Memo</th><th>Time</th></tr></thead>
       <tbody id="payments"></tbody>
@@ -146,6 +148,9 @@ async function load() {
   state = await api("/api/state");
   const c = state.config;
   $("ids").textContent = `guard ${state.guard} · agent ${state.agent} · owner ${state.owner}`;
+  $("mode").className = `pill ${state.mode === "demo" ? "warn" : "allow"}`;
+  $("mode").textContent = state.mode === "demo" ? "demo mode · simulated contract" : "testnet";
+  $("logTitle").textContent = state.mode === "demo" ? "Payment log (simulated guard contract)" : "Payment log (on-chain)";
   $("frozen").className = `pill ${c.frozen ? "block" : "allow"}`;
   $("frozen").textContent = c.frozen ? "frozen" : "active";
   $("freezeBtn").textContent = c.frozen ? "Unfreeze" : "Freeze";
@@ -183,7 +188,8 @@ async function load() {
 }
 
 const formData = (f) => Object.fromEntries(new FormData(f));
-const result = (r) => r.ok ? `OK  ${r.explorer}` : `REJECTED  ${r.error}\n${r.explorer}`;
+const where = (r) => r.explorer ?? `(demo tx ${r.txHash})`;
+const result = (r) => r.ok ? `OK  ${where(r)}` : `REJECTED  ${r.error}\n${where(r)}`;
 
 $("refreshBtn").onclick = (e) => busy(e.target, load);
 $("runAgent").onclick = (e) => busy(e.target, async () => {
@@ -192,7 +198,12 @@ $("runAgent").onclick = (e) => busy(e.target, async () => {
   $("log").textContent = r.log.join("\n");
   await load();
 });
-$("showInbox").onclick = (e) => busy(e.target, async () => { $("log").textContent = (await api("/api/inbox")).inbox; });
+$("bypass").onclick = (e) => busy(e.target, async () => {
+  $("log").textContent = "Attacker calls the guard contract directly…";
+  $("log").textContent = (await api("/api/attack/bypass", {})).log.join("\n");
+  await load();
+});
+$("showInbox").onclick =(e) => busy(e.target, async () => { $("log").textContent = (await api("/api/inbox")).inbox; });
 $("checkBtn").onclick = (e) => busy(e.target, async () => {
   const d = formData($("payForm"));
   const r = await api("/api/check", d);
